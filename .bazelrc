@@ -1,6 +1,6 @@
 # build --action_env=CC=clang
 # build --action_env=CXX=clang++
-build --noincompatible_sandbox_hermetic_tmp
+# build --noincompatible_sandbox_hermetic_tmp
 build --noincompatible_disallow_empty_glob
 build --disk_cache=~/.cache/shared_bazel_action_cache/
 test --test_verbose_timeout_warnings
