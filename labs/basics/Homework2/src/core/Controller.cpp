@@ -35,7 +35,27 @@ void Controller::SetLightSource(const QPointF& light_source) {
     light_source_ = light_source;
 }
 
-std::vector<Ray> Controller::CastRays() const {
+const std::vector<QPointF>& Controller::GetLightOffsets() const {
+    return light_offsets_;
+}
+
+void Controller::SetLightOffsets(const std::vector<QPointF>& offsets) {
+    light_offsets_ = offsets;
+}
+
+std::vector<QPointF> Controller::GetAllLightSources() const {
+    std::vector<QPointF> result;
+    result.reserve(light_offsets_.size());
+
+    for (const auto& offset : light_offsets_) {
+        result.push_back(light_source_ + offset);
+    }
+
+    return result;
+}
+
+
+std::vector<Ray> Controller::CastRays(const QPointF& light_source) const {
     const double del_angle = 0.0001;
     const double ray_length = 10000.0;
 
@@ -43,7 +63,7 @@ std::vector<Ray> Controller::CastRays() const {
 
     for (const auto& polygon : polygons_) {
         for (const auto& vertex : polygon.GetVertices()) {
-            QPointF dir = vertex - light_source_;
+            QPointF dir = vertex - light_source;
 
             double len2 = geometry::LengthSquared(dir);
             if (len2 < 1e-12) {
@@ -52,10 +72,10 @@ std::vector<Ray> Controller::CastRays() const {
 
             double len = std::sqrt(len2);
             QPointF normalized = dir / len;
-            QPointF far_end = light_source_ + normalized * ray_length;
+            QPointF far_end = light_source + normalized * ray_length;
 
             double angle = geometry::AngleOf(dir);
-            Ray ray(light_source_, far_end, angle);
+            Ray ray(light_source, far_end, angle);
 
             res.push_back(ray);
             res.push_back(ray.Rotate(del_angle));
@@ -65,6 +85,7 @@ std::vector<Ray> Controller::CastRays() const {
 
     return res;
 }
+
 
 void Controller::IntersectRays(std::vector<Ray>* rays) const {
     for (auto& ray : *rays) {
@@ -112,8 +133,8 @@ void Controller::RemoveAdjacentRays(std::vector<Ray>* rays) const {
     *rays = std::move(filtered);
 }
 
-Polygon Controller::CreateLightArea() const {
-    std::vector<Ray> rays = CastRays();
+Polygon Controller::CreateLightArea(const QPointF& light_source) const {
+    std::vector<Ray> rays = CastRays(light_source);
 
     IntersectRays(&rays);
 
@@ -129,4 +150,107 @@ Polygon Controller::CreateLightArea() const {
     }
 
     return Polygon(vertices);
+}
+
+Polygon& Controller::GetLastPolygon() {
+    return polygons_.back();
+}
+
+const Polygon& Controller::GetLastPolygon() const {
+    return polygons_.back();
+}
+
+void Controller::RemoveLastVertexFromLastPolygon() {
+    if (polygons_.empty()) {
+        return;
+    }
+    polygons_.back().RemoveLastVertex();
+}
+
+void Controller::RemoveLastPolygon() {
+    if (!polygons_.empty()) {
+        polygons_.pop_back();
+    }
+}
+
+void Controller::SetPolygon(size_t index, const Polygon& polygon) {
+    if (index < polygons_.size()) {
+        polygons_[index] = polygon;
+    }
+}
+
+size_t Controller::PolygonCount() const {
+    return polygons_.size();
+}
+
+bool Controller::Empty() const {
+    return polygons_.empty();
+}
+
+bool Controller::IsLightSourcePositionValid(const QPointF& pos) const {
+    for (const auto& offset : light_offsets_) {
+        const QPointF light_point = pos + offset;
+
+        for (size_t i = 0; i < polygons_.size(); ++i) {
+            if (i == 0) {
+                continue;
+            }
+
+            if (polygons_[i].ContainsPoint(light_point) || polygons_[i].OnBoundary(light_point)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool Controller::CanPlacePolygon(const Polygon& polygon, int ignore_index, bool treat_as_open) const {
+    if (polygon.SelfIntersects(!treat_as_open)) {
+        return false;
+    }
+
+    if (polygon.VertexCount() < 2) {
+        return true;
+    }
+
+    for (size_t i = 0; i < polygons_.size(); ++i) {
+        if (i == 0) {
+            continue;
+        }
+        if (static_cast<int>(i) == ignore_index) {
+            continue;
+        }
+
+        if (polygon.IntersectsPolygon(polygons_[i], !treat_as_open)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+const std::vector<QPointF>& Controller::GetStaticLightSources() const {
+    return static_light_sources_;
+}
+
+void Controller::AddStaticLightSource(const QPointF& light_source) {
+    static_light_sources_.push_back(light_source);
+}
+
+void Controller::ClearStaticLightSources() {
+    static_light_sources_.clear();
+}
+
+std::vector<QPointF> Controller::GetAllStaticLightPoints() const {
+    std::vector<QPointF> result;
+    result.reserve(static_light_sources_.size() * light_offsets_.size());
+
+    for (const auto& source_center : static_light_sources_) {
+        for (const auto& offset : light_offsets_) {
+            result.push_back(source_center + offset);
+        }
+    }
+
+    return result;
 }

@@ -1,5 +1,6 @@
 #include "GeometryUtils.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace geometry {
@@ -43,6 +44,54 @@ QPointF RotateVector(const QPointF& v, double angle) {
 
 bool AlmostEqual(double a, double b, double eps) {
     return std::abs(a - b) <= eps;
+}
+
+double Orientation(const QPointF& a, const QPointF& b, const QPointF& c) {
+    return Cross(b - a, c - a);
+}
+
+bool OnSegment(const QPointF& a, const QPointF& b, const QPointF& p, double eps) {
+    if (std::abs(Orientation(a, b, p)) > eps) {
+        return false;
+    }
+
+    return p.x() >= std::min(a.x(), b.x()) - eps &&
+           p.x() <= std::max(a.x(), b.x()) + eps &&
+           p.y() >= std::min(a.y(), b.y()) - eps &&
+           p.y() <= std::max(a.y(), b.y()) + eps;
+}
+
+bool SegmentsIntersect(
+    const QPointF& a1,
+    const QPointF& a2,
+    const QPointF& b1,
+    const QPointF& b2,
+    double eps) {
+
+    const double o1 = Orientation(a1, a2, b1);
+    const double o2 = Orientation(a1, a2, b2);
+    const double o3 = Orientation(b1, b2, a1);
+    const double o4 = Orientation(b1, b2, a2);
+
+    if (((o1 > eps && o2 < -eps) || (o1 < -eps && o2 > eps)) &&
+        ((o3 > eps && o4 < -eps) || (o3 < -eps && o4 > eps))) {
+        return true;
+    }
+
+    if (std::abs(o1) <= eps && OnSegment(a1, a2, b1, eps)) {
+        return true;
+    }
+    if (std::abs(o2) <= eps && OnSegment(a1, a2, b2, eps)) {
+        return true;
+    }
+    if (std::abs(o3) <= eps && OnSegment(b1, b2, a1, eps)) {
+        return true;
+    }
+    if (std::abs(o4) <= eps && OnSegment(b1, b2, a2, eps)) {
+        return true;
+    }
+
+    return false;
 }
 
 std::optional<QPointF> IntersectRaySegment(

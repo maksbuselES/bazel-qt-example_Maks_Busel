@@ -14,12 +14,18 @@ public:
 
     void AddVertex(const QPointF& vertex);
     void UpdateLastVertex(const QPointF& new_vertex);
+    void RemoveLastVertex();
+
+    size_t VertexCount() const;
+    bool Empty() const;
 
     std::optional<QPointF> IntersectRay(const Ray& ray) const;
 
-private:
-    std::vector<QPointF> vertices_;
+    bool OnBoundary(const QPointF& point) const;
+    bool ContainsPoint(const QPointF& point) const;
+    bool IntersectsPolygon(const Polygon& other, bool this_closed = true) const;
+    bool SelfIntersects(bool closed = true) const;
 
-    std::optional<QPointF> Intersect1Ray(const Ray& ray, const QPointF& p1, const QPointF& p2) const;
-    double GetDistanceSquared(const QPointF& p1, const QPointF& p2) const;
+private:    
+    std::vector<QPointF> vertices_;
 };
