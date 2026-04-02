@@ -7,7 +7,7 @@ The project is based on 2D raycasting: rays are cast from light sources toward o
 
 ## Demo
 
-![Raycaster Demo](docs/demo.gif)
+![Raycaster Demo](src/docs/demo.gif)
 
 ## Features
 
